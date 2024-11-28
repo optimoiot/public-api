@@ -1,0 +1,351 @@
+openapi: 3.0.0
+info:
+  title: Optimo IoT Data API
+  description: Interact with data from Optimo IoT edge devices
+  version: 1.0.0
+servers:
+  - url: https://prod.api.optimoiot.it/
+    description: Public https endpoint
+security:
+  - api_key: []
+    app_id: []
+    app_secret: []
+paths:
+  /timeseries:
+    post:
+      tags:
+        - Time series data
+      summary: Get raw values for multiple variables
+      operationId: "/timeseries"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimeseriesRequest"
+            examples:
+              latest_one:
+                value: [{ "variable_id": "*****_*****A" }]
+                summary: Latest value for one variable
+              latest_multiple:
+                value:
+                  [
+                    { variable_id: "*****_*****A" },
+                    { variable_id: "*****_*****B" },
+                  ]
+                summary: Latest value for multiple variables
+              multiple_variables:
+                value:
+                  [
+                    {
+                      variable_id: "*****_*****A",
+                      from: 1730419200000,
+                      to: 1730505600000,
+                    },
+                    {
+                      variable_id: "*****_*****B",
+                      from: 1730419200000,
+                      to: 1730505600000,
+                    },
+                    {
+                      variable_id: "*****_*****C",
+                      from: 1730419200000,
+                      to: 1730505600000,
+                    },
+                  ]
+                summary: Values for 2024-11-01 UTC for 3 variables
+              latest_5:
+                value: [{ variable_id: "*****_*****A", limit: 5 }]
+                summary: Latest 5 values
+              first_5:
+                value:
+                  [
+                    {
+                      variable_id: "*****_*****A",
+                      limit: 5,
+                      from: 1730419200000,
+                      forward: true,
+                    },
+                  ]
+                summary: First 5 values since 2024-11-01 UTC
+      responses:
+        "200":
+          description: Values are returned in blocks in the same order as the corresponding request blocks. If `next` blocks are returned, the user need to use them as the next queries for pagination.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesResponse"
+              examples:
+                latest_one:
+                  value:
+                    [
+                      {
+                        "values":
+                          [{ "value": 13.1, "timestamp": 1732819800000 }],
+                      },
+                    ]
+                  summary: Latest value for one variable
+                latest_multiple:
+                  value:
+                    [
+                      {
+                        "values":
+                          [{ "value": 13.1, "timestamp": 1732819800000 }],
+                      },
+                      {
+                        "values":
+                          [{ "value": 85.13, "timestamp": 1732819800000 }],
+                      },
+                    ]
+                  summary: Latest value for multiple variables
+                pagination:
+                  value:
+                    [
+                      {
+                        "values":
+                          [
+                            { "value": 13.1, "timestamp": 1732819800000 },
+                            { "value": 15.1, "timestamp": 1732819900000 },
+                          ],
+                        "next":
+                          {
+                            "variable_id": "*****_*****A",
+                            "from": 1732819900001,
+                          },
+                      },
+                    ]
+                  summary: Pagination response
+  /analyse/frame:
+    post:
+      tags:
+        - Time series data
+      summary: Get aggregated statistics with multiple dimensions
+      operationId: "/analyse/frame"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FrameRequest"
+            examples:
+              average:
+                value:
+                  {
+                    "dimensions":
+                      [{ "type": "timestamp" }, { "type": "variable_id" }],
+                    "sources":
+                      [
+                        {
+                          "variable_id": "******_*****A",
+                          "aggInterval": "hour",
+                          "aggType": "avg",
+                          "from": 1732489200000,
+                          "to": 1732813199999,
+                        },
+                      ],
+                    "timezone": "Europe/Rome",
+                  }
+                summary: Hourly average of variable value
+              incremental_delta:
+                value:
+                  {
+                    "dimensions":
+                      [{ "type": "timestamp" }, { "type": "variable_id" }],
+                    "sources":
+                      [
+                        {
+                          "variable_id": "******_*****A",
+                          "aggInterval": "day",
+                          "aggType": "positiveDelta",
+                          "from": 1732489200000,
+                          "to": 1732813199999,
+                        },
+                      ],
+                    "timezone": "Europe/Rome",
+                  }
+                summary: Daily increment of counter (e.g. kWh from energy meter)
+      responses:
+        "200":
+          description: Values are returned as a list of values and their corresponding dimensions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameResponse"
+              examples:
+                average:
+                  value:
+                    [
+                      {
+                        "value": 24.716666666666658,
+                        "dimensions": [1732809600000, "******_*****A"],
+                      },
+                      {
+                        "value": 25.2,
+                        "dimensions": [1732806000000, "******_*****A"],
+                      },
+                      {
+                        "value": 25.291666666666668,
+                        "dimensions": [1732802400000, "******_*****A"],
+                      },
+                      {
+                        "value": 24.78333333333333,
+                        "dimensions": [1732798800000, "******_*****A"],
+                      },
+                      {
+                        "value": 24.675,
+                        "dimensions": [1732795200000, "******_*****A"],
+                      },
+                    ]
+                  summary: Hourly average of variable value
+components:
+  schemas:
+    TimeseriesRequest:
+      type: object
+      required:
+        - variable_id
+      properties:
+        variable_id:
+          type: string
+          description: e.g. xuhay9_igHgsa
+        limit:
+          type: number
+          description: limit the number of returned samples
+          default: 1
+        from:
+          type: number
+          description: lower datetime limit (unix ms)
+          default: null
+        to:
+          type: number
+          description: lower datetime limit (unix ms)
+          default: null
+        forward:
+          type: boolean
+          description: query data in timestamp ascending order
+          default: false
+    FrameRequest:
+      type: object
+      properties:
+        dimensions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - timestamp
+                  - dayOfWeek
+                  - hourOfDay
+                  - source
+                  - variable_id
+                  - aggType
+                  - aggInterval
+                  - manufacturingOrder
+                  - manufacturingBatch
+                  - manufacturingProduct
+        frame:
+          type: string
+          enum:
+            - last
+            - first
+            - sum
+            - avg
+            - count
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              from:
+                type: number
+              to:
+                type: number
+              variable_id:
+                type: string
+              aggInterval:
+                type: string
+                enum:
+                  - quarterOfHour
+                  - hour
+                  - day
+                  - week
+                  - month
+                  - year
+                  - life
+                nullable: true
+              aggType:
+                type: string
+                enum:
+                  - avg
+                  - sum
+                  - count
+                  - max
+                  - min
+                  - p99
+                  - p1
+                  - locfIntegral
+                  - alarmTimeOn
+                  - locfBooleanWeightedAverage
+                  - positiveDelta
+                  - locfWeightedAverage
+                  - risingEdgeCount
+                  - fallingEdgeCount
+                  - alarmActivationCount
+    FrameResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          value:
+            type: number
+            nullable: true
+          dimensions:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+              nullable: true
+
+    TimeseriesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeseriesResponse_values"
+        next:
+          allOf:
+            - $ref: "#/components/schemas/TimeseriesRequest"
+            - description: next query to perform to continue pagination
+          default: null
+    TimeseriesResponse_values:
+      type: object
+      properties:
+        value:
+          oneOf:
+            - type: number
+            - type: boolean
+        timestamp:
+          type: number
+          description: Unix milliseconds
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: x-api-key
+      in: header
+      description: Write us at info@optimoiot.it to get your API keys
+    app_id:
+      type: apiKey
+      name: app-id
+      in: header
+      description: Write us at info@optimoiot.it to get your API keys
+    app_secret:
+      type: apiKey
+      name: app-secret
+      in: header
+      description: Write us at info@optimoiot.it to get your API keys

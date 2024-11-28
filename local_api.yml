@@ -1,0 +1,101 @@
+openapi: 3.0.0
+info:
+  title: Optimo IoT Data API
+  description: Interact with data from Optimo IoT edge devices
+  version: 1.0.0
+servers:
+  - url: http://10.10.10.10/api
+    description: Local http endpoint
+  - url: https://10.10.10.10/api
+    description: Local https endpoint
+security:
+  - {}
+  - apiKey_1: []
+paths:
+  /login:
+    post:
+      summary: Logs in and returns the authentication  cookie
+      requestBody:
+        description: A JSON object containing the login and password.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: |
+            Successfully authenticated. The session ID is returned in a cookie named `OPTIMO_LOCAL`. You need to include this cookie in subsequent requests.
+          headers:
+            Set-Cookie:
+              style: simple
+              explode: false
+              schema:
+                type: string
+                example: OPTIMO_LOCAL=abcde12345; Path=/; HttpOnly
+      security: []
+  /timeseries:
+    post:
+      summary: Get multiple variable values
+      operationId: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimeseriesRequest"
+      responses:
+        "200":
+          description: successfully got variable values
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesResponse"
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    TimeseriesRequest:
+      type: object
+      properties:
+        variable_id:
+          type: string
+          description: e.g. xuhay9_igHgsa
+        limit:
+          type: number
+          description: limit the number of returned samples
+          default: 1
+    TimeseriesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeseriesResponse_values"
+        next:
+          allOf:
+            - $ref: "#/components/schemas/TimeseriesRequest"
+            - description: not null for pagination for large requested samples number
+    TimeseriesResponse_values:
+      type: object
+      properties:
+        value:
+          oneOf:
+            - type: number
+            - type: boolean
+        timestamp:
+          type: number
+          description: Unix milliseconds
+  securitySchemes:
+    apiKey_1:
+      type: apiKey
+      name: OPTIMO_LOCAL
+      in: cookie
