@@ -50,3 +50,23 @@ print(response)
 
 # Set value of variable to 1
 api.set_value("XXXXX_YYYYY", 1)
+
+# Injest value for a cloud variable
+api.injest_values([
+    {
+        "variable_id": "XXXXX_YYYYY",
+        "samples": [
+            {
+                "timestamp": 1612137600000,
+                "value": 1
+            },
+            {
+                "timestamp": 1612137700000,
+                "value": 2
+            }
+        ]
+    }
+])
+
+# delete injested values
+api.delete_injested_values(["XXXXX_YYYYY"], from_unix_ms_timestamp=1612137600000, to_unix_ms_timestamp=1612137700000)

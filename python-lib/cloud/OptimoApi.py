@@ -7,6 +7,11 @@ class Sample:
     timestamp: int
     value: float
 
+@dataclass
+class VariableData:
+    variable_id: str
+    samples: list[Sample]
+
 
 class OptimoApi(object):
     API_ENDPOINT = "https://prod.api.optimoiot.it"
@@ -104,4 +109,22 @@ class OptimoApi(object):
                 "value": value,
             }
         response = self._do_post_request(f"setpoint/{variable_id}", payload)
+        return response
+
+    def injest_values(self, data: list[VariableData]):
+        """
+        Injest samples to the cloud DB. Only applicable for variables marked as "injestable"
+        """
+        response = self._do_post_request(f"injest", data)
+        return response
+
+    def delete_injested_values(self, variable_ids: list[str], from_unix_ms_timestamp: float, to_unix_ms_timestamp: float):
+        """
+        Delete injested values in a specific time range
+        """
+        response = self._do_post_request(f"injest", {
+            "variable_ids": variable_ids,
+            "from": from_unix_ms_timestamp,
+            "to": to_unix_ms_timestamp,
+        })
         return response

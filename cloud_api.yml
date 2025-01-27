@@ -199,6 +199,62 @@ paths:
                       },
                     ]
                   summary: Hourly average of variable value
+  /injest:
+    post:
+      tags:
+        - Time series data
+      summary: Injest custom values for multiple variables
+      operationId: "/injest"
+      requestBody:
+        description: Only variables marked as *injestable* can have values injested via this API. Each API call can contain max **1000** samples.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/InjestRequest"
+            examples:
+              injest:
+                value:
+                  [
+                    {
+                      "variable_id": "*****_*****A",
+                      "samples":
+                        [
+                          { "value": 1, "timestamp": 1730505600000 },
+                          { "value": 2, "timestamp": 1730505660000 },
+                        ],
+                    },
+                  ]
+                summary: Injest some data
+      responses:
+        "200":
+          description: Values are saved into DB
+    delete:
+      tags:
+        - Time series data
+      summary: Delete values for injested variables
+      operationId: "/injest/delete"
+      requestBody:
+        description: Only values of variables marked as *injestable* can be deleted via this API
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/InjestDeleteRequest"
+            examples:
+              injest:
+                value:
+                  {
+                    "variable_ids": ["*****_*****A"],
+                    "from": 1730505600000,
+                    "to": 1730505660000,
+                  }
+                summary: Injest some data
+      responses:
+        "200":
+          description: Values are saved into DB
 components:
   schemas:
     TimeseriesRequest:
@@ -226,6 +282,43 @@ components:
           type: boolean
           description: query data in timestamp ascending order
           default: false
+    InjestRequest:
+      type: array
+      description: max 1000 samples per request
+      items:
+        type: object
+        required:
+          - variable_id
+          - samples
+        properties:
+          variable_id:
+            type: string
+            description: e.g. xuhay9_igHgsa
+          samples:
+            type: array
+            items:
+              type: object
+              properties:
+                value:
+                  type: number
+                timestamp:
+                  type: number
+    InjestDeleteRequest:
+      type: object
+      required:
+        - variable_ids
+        - from
+        - to
+      properties:
+        variable_ids:
+          type: array
+          items:
+            type: string
+            description: e.g. xuhay9_igHgsa
+        from:
+          type: number
+        to:
+          type: number
     FrameRequest:
       type: object
       properties:
