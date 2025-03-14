@@ -47,6 +47,22 @@ print(response)
 ]
 """
 
+response = api.get_aggregated_values(["XXXXX_YYYYY"], 1720915200000.0, 1740783600000.0, "day", "positiveDelta")
+print(response)
+"""
+{
+    "XXXXX_YYYYY": [
+        {
+            "timestamp": 1612137600000,
+            "value": 1
+        },
+        {
+            "timestamp": 1612137660000,
+            "value": 1
+        }
+    }
+]
+"""
 
 # Set value of variable to 1
 api.set_value("XXXXX_YYYYY", 1)

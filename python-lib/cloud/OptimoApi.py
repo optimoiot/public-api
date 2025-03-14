@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+from typing import Literal
 import requests
 
 @dataclass
@@ -12,6 +13,35 @@ class VariableData:
     variable_id: str
     samples: list[Sample]
 
+from enum import Enum
+
+AggregationType = Literal[
+    "avg",
+    "sum",
+    "count",
+    "max",
+    "min",
+    "p99",
+    "p1",
+    "locfIntegral",
+    "alarmTimeOn",
+    "locfBooleanWeightedAverage",
+    "positiveDelta",
+    "locfWeightedAverage",
+    "risingEdgeCount",
+    "fallingEdgeCount",
+    "alarmActivationCount"
+]
+
+AggregationInterval = Literal[
+    "quarterOfHour",
+    "hour",
+    "day",
+    "week",
+    "month",
+    "year",
+    "life"
+]
 
 class OptimoApi(object):
     API_ENDPOINT = "https://prod.api.optimoiot.it"
@@ -128,3 +158,31 @@ class OptimoApi(object):
             "to": to_unix_ms_timestamp,
         })
         return response
+
+    def get_aggregated_values(self, variable_ids: list[str], from_unix_ms_timestamp: float, to_unix_ms_timestamp: float, aggregationInterval: AggregationInterval, aggregationType: AggregationType) -> dict[str, list[Sample]]:
+        """
+        Delete injested values in a specific time range
+        """
+        response = self._do_post_request("analyse/frame", {
+            "dimensions": [
+                {"type":"timestamp"},
+                {"type":"variable_id"}
+            ],
+            "sources": list(map(lambda variable_id: {
+                "from": from_unix_ms_timestamp,
+                "to": to_unix_ms_timestamp,
+                "variable_id": variable_id,
+                "aggInterval": aggregationInterval,
+                "aggType": aggregationType
+                }, variable_ids)),
+            "timezone":"Europe/Rome"
+        })
+        
+        r = {}
+        for sample in response:
+            timestamp = sample["dimensions"][0]
+            variable_id = sample["dimensions"][1]
+            value = sample["value"]
+            r.setdefault(variable_id, [])
+            r[variable_id].append(Sample(timestamp, value))
+        return r
